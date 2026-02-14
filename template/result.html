@@ -179,27 +179,154 @@
             background-size: auto, cover;
             background-position: center, center;
         }
+        .query-weapons-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .query-weapon-card {
+            flex: 1;
+            min-width: 250px;
+        }
+        .separator {
+            border-top: 2px dashed #444;
+            margin: 20px 0;
+        }
+        .weapon-stats {
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (max-width: 400px) {
+            .weapon-stats {
+                font-size: 10px;
+            }
+        }
     </style>
 </head>
 <body>
 <div id="app" class="container">
     <h1 class="title">{{ data.title }}</h1>
 
+    <!-- 单武器查询 -->
     <div class="weapon-info" :class="data.rarity_class" v-if="data.weapon_name">
         <div style="display:flex;align-items:center;">
             <img class="weapon-icon"
                  :src="'images/' + data.weapon_id + '.webp'"
                  @error="imgError">
-            <div>
+            <div style="flex:1;">
                 <div class="weapon-name">{{ data.weapon_name }}</div>
                 <div class="stat-row">
                     <span class="stat-label">类型:</span>
                     <span class="stat-value">{{ data.weapon_type }}</span>
                 </div>
+                <div class="stat-row weapon-stats">
+                    <span class="stat-value">{{ data.attribute }} | {{ data.secondary }} | {{ data.skill }}</span>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- 多武器同时刷取查询 -->
+    <div class="query-weapons-container" v-if="data.is_multi_weapon && data.query_weapons">
+        <div class="weapon-info query-weapon-card"
+             :class="weapon.rarity_class"
+             v-for="weapon in data.query_weapons"
+             :key="weapon.id">
+            <div style="display:flex;align-items:center;">
+                <img class="weapon-icon"
+                     :src="'images/' + weapon.id + '.webp'"
+                     @error="imgError">
+                <div style="flex:1;">
+                    <div class="weapon-name">{{ weapon.name }}</div>
+                    <div class="stat-row">
+                        <span class="stat-label">类型:</span>
+                        <span class="stat-value">{{ weapon.type }}</span>
+                    </div>
+                    <div class="stat-row weapon-stats">
+                        <span class="stat-value">{{ weapon.attribute }} | {{ weapon.secondary }} | {{ weapon.skill }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分开刷取方案 -->
+    <template v-if="data.is_separate && data.separate_weapons">
+        <div v-for="(weaponData, index) in data.separate_weapons" :key="weaponData.id">
+            <div class="separator" v-if="index > 0"></div>
+
+            <div class="weapon-info" :class="weaponData.rarity_class">
+                <div style="display:flex;align-items:center;">
+                    <img class="weapon-icon"
+                         :src="'images/' + weaponData.id + '.webp'"
+                         @error="imgError">
+                    <div style="flex:1;">
+                        <div class="weapon-name">{{ weaponData.name }}</div>
+                        <div class="stat-row">
+                            <span class="stat-label">类型:</span>
+                            <span class="stat-value">{{ weaponData.type }}</span>
+                        </div>
+                        <div class="stat-row weapon-stats">
+                            <span class="stat-value">{{ weaponData.attribute }} | {{ weaponData.secondary }} | {{ weaponData.skill }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="choice-card" v-for="choice in weaponData.choices" :key="choice.index">
+                <div class="choice-header">
+                    方案 {{ choice.index }}
+                    <span style="color:#666;font-size:14px;margin-left:10px;">
+                        (可匹配 {{ choice.matched_count }} 件武器)
+                    </span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">刷取地点:</span>
+                    <span class="stat-value">{{ choice.battle_name }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">基础属性:</span>
+                    <span class="stat-value">{{ choice.attributes }}</span>
+                </div>
+                <div class="stat-row" v-if="choice.secondary !== '-'">
+                    <span class="stat-label">附加属性:</span>
+                    <span class="stat-value">{{ choice.secondary }}</span>
+                </div>
+                <div class="stat-row" v-if="choice.skill !== '-'">
+                    <span class="stat-label">技能属性:</span>
+                    <span class="stat-value">{{ choice.skill }}</span>
+                </div>
+
+                <div v-if="choice.matched_weapons && choice.matched_weapons.length" style="margin-top:12px;">
+                    <div style="color:#666;font-size:13px;margin-bottom:6px;font-weight:500;">
+                        该方案可同时刷取:
+                    </div>
+                    <div class="weapon-list">
+                        <div class="weapon-item"
+                             :class="'rarity-' + weapon.rarity"
+                             v-for="weapon in choice.matched_weapons"
+                             :key="weapon.id">
+                            <img class="weapon-small-icon"
+                                 :src="'images/' + weapon.id + '.webp'"
+                                 @error="imgError">
+                            <div style="flex:1;">
+                                <div style="font-weight:bold;font-size:13px;">{{ weapon.name }}</div>
+                                <div style="font-size:11px;color:#999;">{{ weapon.type }}</div>
+                                <div style="font-size:10px;color:#666;margin-top:2px;">
+                                    {{ weapon.attribute }} | {{ weapon.secondary }} | {{ weapon.skill }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 单武器或多武器同时刷取的方案列表 -->
     <template v-if="data.choices && data.choices.length">
         <div class="choice-card" v-for="choice in data.choices" :key="choice.index">
             <div class="choice-header">
@@ -238,9 +365,12 @@
                         <img class="weapon-small-icon"
                              :src="'images/' + weapon.id + '.webp'"
                              @error="imgError">
-                        <div>
+                        <div style="flex:1;">
                             <div style="font-weight:bold;font-size:13px;">{{ weapon.name }}</div>
-                            <div style="font-size:11px;color:#666;">{{ weapon.type }}</div>
+                            <div style="font-size:11px;color:#999;">{{ weapon.type }}</div>
+                            <div style="font-size:10px;color:#666;margin-top:2px;">
+                                <span>{{ weapon.attribute }}</span> | <span>{{ weapon.secondary }}</span> | <span>{{ weapon.skill }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
